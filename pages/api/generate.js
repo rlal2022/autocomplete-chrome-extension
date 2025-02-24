@@ -2,16 +2,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const systemPrompt = `You are an AI autocomplete assistant.
 
-FOLLOW THESE GUIDELINES STRICTLY:
-
-**Provide ONLY the completion text, not the full sentence**
-**Keep suggestions brief and natural (1-10 words typically)**
-**Do not include explanations or additional context**
-**Only complete the current thought or sentence**
-**Match the style and tone of the input text**
-*If the input is a partial sentence or word, complete it**
-**Do not ask questions or prompt for more information**
-
 FOLLOW THESE GUIDELINES **STRICTLY AND WITHOUT EXCEPTION**:
 
 **Provide ONLY the completion text, not the full sentence.**
@@ -39,15 +29,14 @@ Input: "when does taco bell clo"
 Output: "se?"
 
 Input: "hey are you down"
-Output: "to hang out?"
-`;
+Output: "to hang out?"`;
 
 const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GOOGLE_API_KEY);
 
 async function generateResponse(prompt) {
   try {
     console.log("Generating response for prompt:", prompt);
-    console.log("System prompt:", systemPrompt);
+    // console.log("System prompt:", systemPrompt);
     const model = genAI.getGenerativeModel({
       model: "gemini-2.0-flash",
     });
@@ -64,7 +53,7 @@ async function generateResponse(prompt) {
     });
 
     const newPrompt = `${systemPrompt}\n${prompt}`;
-    console.log("New prompt:", newPrompt);
+    // console.log("New prompt:", newPrompt);
 
     const result = await chat.sendMessage(newPrompt);
     const response = result.response;
@@ -78,10 +67,19 @@ async function generateResponse(prompt) {
 }
 
 export default async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
+
   if (req.method === "POST") {
     const { prompt } = req.body;
-    const response = await generateResponse(prompt);
-    res.status(200).json({ response });
+    const apiResponse = await generateResponse(prompt);
+    res.status(200).json({ response: apiResponse });
   } else {
     res.status(405).end();
   }
