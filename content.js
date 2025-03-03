@@ -1,10 +1,15 @@
-const API_URL = "http://localhost:3001/api/generate";
+const API_URL = "http://localhost:3000/api/generate";
 const debounce = _.debounce;
 
 const state = {
   currentInput: "",
   currentSuggestion: "",
 };
+
+const isValidTarget = (target) =>
+  target.tagName === "TEXTAREA" || target.isContentEditable;
+
+// Creates or gets a span to display suggestions
 
 function createSuggestionElement() {
   const id = "display-suggestion";
@@ -28,8 +33,12 @@ function createSuggestionElement() {
   return element;
 }
 
+// Place the span element over the target element
+
 function updatePosition(target, element) {
+  // https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect
   const rect = target.getBoundingClientRect();
+  // Get CSS of the target element
   const style = window.getComputedStyle(target);
 
   Object.assign(element.style, {
@@ -44,6 +53,15 @@ function updatePosition(target, element) {
   });
 }
 
+const mergeSuggestion = (text, suggestion) => {
+  const lastWord = text.match(/\S+$/);
+  if (lastWord) {
+    const lastWordMatches = lastword[0];
+    return text.slice(0, -lastWordMatches.length) + suggestion;
+  }
+  return text + suggestion;
+};
+
 const fetchSuggestion = debounce(async (text, target) => {
   try {
     const res = await fetch(API_URL, {
@@ -54,8 +72,21 @@ const fetchSuggestion = debounce(async (text, target) => {
     const data = await res.json();
 
     if (data.response) {
-      const addSpace = !text.endsWith(" ") && !data.response.startsWith(" ");
-      const fullSuggestion = text + (addSpace ? " " : "") + data.response;
+      let suggestion = data.response;
+      let fullSuggestion;
+
+      // Checks if we need to replace the last partial word
+      if (!text.endsWith(" ") && text.trim().length > 0) {
+        const lastSpaceIndex = text.lastIndexOf(" ");
+        const baseText =
+          lastSpaceIndex === -1 ? "" : text.substring(0, lastSpaceIndex + 1);
+
+        fullSuggestion = baseText + suggestion;
+      } else {
+        // Add a space if the suggestion doesn't start with one
+        const addSpace = !text.endsWith(" ") && !suggestion.startsWith(" ");
+        fullSuggestion = text + (addSpace ? " " : "") + suggestion;
+      }
 
       if (fullSuggestion !== text) {
         const element = createSuggestionElement();
@@ -108,9 +139,6 @@ function handleKeydown(e) {
 }
 
 // Event listeners
-
-const isValidTarget = (target) =>
-  target.tagName === "TEXTAREA" || target.isContentEditable;
 
 document.addEventListener(
   "input",
